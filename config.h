@@ -3,7 +3,7 @@
 // Use the lily version to get the Lily58 logo instead of the qmk logo
 #define OLED_FONT_H "lib/glcdfont_lily.c"
 
-#define DEBOUNCE 5
+// #define DEBOUNCE 5
 
 #define SPLIT_WPM_ENABLE
 // Enable double tap reset button to enter bootloader feature for RP2040.
@@ -16,8 +16,8 @@
 // Force master side determination by VBUS (USB voltage) detect method instead of the default USB data detect method.
 // RP2040 controllers like Splinky and Sea Picro have working VBUS detect on GP19 pin.
 
-// #undef SPLIT_USB_DETECT
 // #define SPLIT_USB_DETECT
+// #undef SPLIT_USB_DETECT
 // #define USB_VBUS_PIN GP19
 
 // Set handedness by EEPROM.
@@ -45,3 +45,9 @@
 #define TRI_LAYER_LOWER_LAYER 1
 #define TRI_LAYER_UPPER_LAYER 2
 #define TRI_LAYER_ADJUST_LAYER 3
+
+#define MATRIX_COL_PINS { GP13, GP12, GP22, GP20, GP23, GP21 }
+#define MATRIX_ROW_PINS { GP5, GP6, GP7, GP8, GP9 }
+
+#define MATRIX_COL_PINS_RIGHT { GP27, GP26, GP22, GP20, GP23, GP21 }
+#define MATRIX_ROW_PINS_RIGHT { GP5, GP6, GP7, GP8, GP9 }
