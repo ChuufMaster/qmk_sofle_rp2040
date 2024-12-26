@@ -1,4 +1,5 @@
 OLED_ENABLE = yes           # OLED display
+CAPS_WORD_ENABLE = yes
 
 
 # If you want to change the display of OLED, you need to change here
