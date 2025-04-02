@@ -26,6 +26,10 @@
 #define ENT_NAV LT(_RAISE, KC_ENT)
 #define BS_MED LT(_ADJUST, KC_BSPC)
 #define TAB_MED LT(_ADJUST, KC_TAB)
+#define V_CBR TD(V_LCBR)
+#define B_CBR TD(B_RCBR)
+#define N_BRC TD(N_LBRC)
+#define M_BRC TD(M_RBRC)
 
 enum layer_number {
   _QWERTY = 0,
@@ -45,6 +49,13 @@ enum custom_keycodes {
     KC_LEND
 };
 
+enum {
+    N_LBRC,
+    M_RBRC,
+    V_LCBR,
+    B_RCBR,
+};
+
 const custom_shift_key_t custom_shift_keys[] = {
     {TL_LOWR, TL_UPPR},
     {TL_UPPR, TL_LOWR},
@@ -58,7 +69,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 //    ├─────────┼───────┼───────┼───────┼───────┼───────┤                  ├───────┼───────┼───────┼───────┼───────┼───────┤
 //    │   esc   │   a   │   s   │   d   │   f   │   g   │                  │   h   │   j   │   k   │   l   │   ;   │   '   │
 //    ├─────────┼───────┼───────┼───────┼───────┼───────┼──────┐   ┌───────┼───────┼───────┼───────┼───────┼───────┼───────┤
-//    │   tab   │   z   │   x   │   c   │   v   │   b   │ mute │   │  no   │   n   │   m   │   ,   │   .   │   /   │ rsft  │
+//    │   tab   │   z   │   x   │   c   │  v/{  │  b/}  │ mute │   │  no   │  n/[  │  m/]  │   ,   │   .   │   /   │ rsft  │
 //    └─────────┴───────┼───────┼───────┼───────┼───────┼──────┤   ├───────┼───────┼───────┼───────┼───────┼───────┴───────┘
 //                      │ lgui  │ lalt  │  tab  │  spc  │ spc  │   │  ent  │  ent  │ bspc  │ ralt  │ rgui  │
 //                      └───────┴───────┴───────┴───────┴──────┘   └───────┴───────┴───────┴───────┴───────┘
@@ -66,7 +77,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   QK_GESC , KC_1  , KC_2    , KC_3    , KC_4    , KC_5    ,                         KC_6    , KC_7   , KC_8    , KC_9    , KC_0    , KC_MINUS,
   KC_TAB  , KC_Q  , KC_W    , KC_E    , KC_R    , KC_T    ,                         KC_Y    , KC_U   , KC_I    , KC_O    , KC_P    , KC_BSPC ,
   CTL_ESC , GUI_A , ALT_S   , CTL_D   , SFT_F   , KC_G    ,                         KC_H    , SFT_J  , CTL_K   , ALT_L   , GUI_SCN , KC_QUOT ,
-  SFT_TAB , KC_Z  , KC_X    , KC_C    , KC_V    , KC_B    , KC_MUTE ,     XXXXXXX , KC_N    , KC_M   , KC_COMM , KC_DOT  , KC_SLSH , KC_RSFT ,
+  SFT_TAB , KC_Z  , KC_X    , KC_C    , V_CBR   , B_CBR   , KC_MUTE ,     XXXXXXX , N_BRC   , M_BRC  , KC_COMM , KC_DOT  , KC_SLSH , KC_RSFT ,
                     KC_LGUI , KC_LALT , TAB_MED , SPC_NAV , SPC_NUM ,     ENT_NUM , ENT_NAV , BS_MED , KC_RALT , KC_RGUI
 ),
 
@@ -193,6 +204,48 @@ bool oled_task_user(void) {
 }
 #endif // OLED_ENABLE
 
+typedef struct {
+    uint16_t tap;
+    uint16_t hold;
+    uint16_t held;
+} tap_dance_tap_hold_t;
+
+void tap_dance_tap_hold_finished(tap_dance_state_t *state, void *user_data) {
+    tap_dance_tap_hold_t *tap_hold = (tap_dance_tap_hold_t *)user_data;
+
+    if (state->pressed) {
+        if (state->count == 1
+#ifndef PERMISSIVE_HOLD
+            && !state->interrupted
+#endif
+        ) {
+            register_code16(tap_hold->hold);
+            tap_hold->held = tap_hold->hold;
+        } else {
+            register_code16(tap_hold->tap);
+            tap_hold->held = tap_hold->tap;
+        }
+    }
+}
+
+void tap_dance_tap_hold_reset(tap_dance_state_t *state, void *user_data) {
+    tap_dance_tap_hold_t *tap_hold = (tap_dance_tap_hold_t *)user_data;
+
+    if (tap_hold->held) {
+        unregister_code16(tap_hold->held);
+        tap_hold->held = 0;
+    }
+}
+
+#define ACTION_TAP_DANCE_TAP_HOLD(tap, hold) \
+    { .fn = {NULL, tap_dance_tap_hold_finished, tap_dance_tap_hold_reset}, .user_data = (void *)&((tap_dance_tap_hold_t){tap, hold, 0}), }
+
+tap_dance_action_t tap_dance_actions[] = {
+    [V_LCBR] = ACTION_TAP_DANCE_TAP_HOLD(KC_V, KC_LCBR),
+    [B_RCBR] = ACTION_TAP_DANCE_TAP_HOLD(KC_B, KC_RCBR),
+    [N_LBRC] = ACTION_TAP_DANCE_TAP_HOLD(KC_N, KC_LBRC),
+    [M_RBRC] = ACTION_TAP_DANCE_TAP_HOLD(KC_M, KC_RBRC),
+};
 uint8_t NUM_CUSTOM_SHIFT_KEYS = sizeof(custom_shift_keys) / sizeof(custom_shift_key_t);
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
@@ -207,6 +260,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     {
         return false;
     }
+
+    tap_dance_action_t *action;
 
     switch (keycode) {
         case KC_QWERTY:
@@ -294,25 +349,27 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
             }
             break;
+        case TD(V_LCBR):
+        case TD(B_RCBR):
+        case TD(N_LBRC):
+        case TD(M_RBRC):
+            action = &tap_dance_actions[QK_TAP_DANCE_GET_INDEX(keycode)];
+            if (!record->event.pressed && action->state.count && !action->state.finished) {
+                tap_dance_tap_hold_t *tap_hold = (tap_dance_tap_hold_t *)action->user_data;
+                tap_code16(tap_hold->tap);
+            }
     }
     return true;
 }
 
-//    ┌─────┬──────┬──────┬──────┬──────┬─────────┐               ┌───────┬───────────┬─────┬──────────┬─────┬──────┐
-//    │     │      │      │      │      │         │               │       │           │     │          │     │      │
-//    ├─────┼──────┼──────┼──────┼──────┼─────────┤               ├───────┼───────────┼─────┼──────────┼─────┼──────┤
-//    │     │ ins  │ pscr │ end  │  no  │   no    │               │ pRVWD │   pgup    │ ins │  nXTWD   │ ent │ bspc │
-//    ├─────┼──────┼──────┼──────┼──────┼─────────┤               ├───────┼───────────┼─────┼──────────┼─────┼──────┤
-//    │     │ lalt │ lctl │ pgdn │  no  │ CW_TOGG │               │ left  │   down    │ up  │   rght   │ del │ bspc │
-//    ├─────┼──────┼──────┼──────┼──────┼─────────┼─────┐   ┌─────┼───────┼───────────┼─────┼──────────┼─────┼──────┤
-//    │     │ C(z) │ C(x) │ C(c) │ C(v) │  home   │     │   │     │  no   │   l  STRT │ no  │   l  END │ no  │      │
-//    └─────┴──────┼──────┼──────┼──────┼─────────┼─────┤   ├─────┼───────┼───────────┼─────┼──────────┼─────┴──────┘
-//                 │      │      │      │         │     │   │     │       │           │     │          │
-//                 └──────┴──────┴──────┴─────────┴─────┘   └─────┴───────┴───────────┴─────┴──────────┘
-// [_RAISE] = LAYOUT(
-//   _______ , _______ , _______ , _______ , _______ , _______ ,                         _______  , _______  , _______ , _______  , _______ , _______,
-//   _______ , KC_INS  , KC_PSCR , KC_END  , XXXXXXX , XXXXXXX ,                         KC_PRVWD , KC_PGUP  , KC_INS  , KC_NXTWD , KC_ENT  , KC_BSPC,
-//   _______ , KC_LALT , KC_LCTL , KC_PGDN , XXXXXXX , CW_TOGG ,                         KC_LEFT  , KC_DOWN  , KC_UP   , KC_RGHT  , KC_DEL  , KC_BSPC,
-//   _______ , C(KC_Z) , C(KC_X) , C(KC_C) , C(KC_V) , KC_HOME , _______ ,     _______ , XXXXXXX  , KC_LSTRT , XXXXXXX , KC_LEND  , XXXXXXX , _______,
-//                       _______ , _______ , _______ , _______ , _______ ,     _______ , _______  , _______  , _______ , _______
-// ),
+uint16_t get_tapping_term(uint16_t keycode, keyrecord_t *record) {
+    switch (keycode) {
+        case TD(V_LCBR):
+        case TD(B_RCBR):
+        case TD(N_LBRC):
+        case TD(M_RBRC):
+            return TAPPING_TERM - 75;
+        default:
+            return TAPPING_TERM;
+    }
+}
